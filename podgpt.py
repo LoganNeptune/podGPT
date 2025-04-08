@@ -18,7 +18,7 @@ dropout = 0.2
 
 torch.manual_seed(1337)
 
-# wget https://github.com/karpathy/char-rnn/tree/master/data/tinyshakespeare
+!wget https://raw.githubusercontent.com/LoganNeptune/podGPT/main/pod.txt
 with open('pod.txt', 'r', encoding='utf-8') as f:
     text = f.read()
 
@@ -209,181 +209,24 @@ for iter in range(max_iters):
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
 
+# Generate 10,000 words and save to a file
+# We'll generate enough tokens assuming an average of 5 tokens per word (adjust if necessary)
+context = torch.zeros((1, 1), dtype=torch.long, device=device)
+# Generate, e.g., 50,000 tokens
+generated_tokens = m.generate(context, max_new_tokens=50000)[0].tolist()
+generated_text = decode(generated_tokens)
 
-block_size = 8
-train_data[:block_size+1] #+1 packs 8 examples into chunk of 9 char
+# Split text into words and trim to the first 10,000 words
+words = generated_text.split()
+if len(words) > 10000:
+    generated_text = " ".join(words[:10000])
 
-x = train_data[:block_size]
-y = train_data[1:block_size+1] #1 because y are the targets for each position
-for t in range(block_size):
-  context = x[:t+1]
-  target = y[t]
-  print(f"when input is {context} the target is: {target}")
+with open("generated_text.txt", "w", encoding="utf-8") as f:
+    f.write(generated_text)
 
-torch.manual_seed(1337)
-batch_size = 4 #sequences processing in parellel
-batch_size = 8 # maximum prediction context length
+print("10,000 words written to generated_text.txt")
 
-def get_batch(split):
-  #generate a small batch
-  data = train_data if split == 'train' else val_data
-  ix = torch.randint(len(data) - block_size, (batch_size,))
-  x = torch.stack([data[i:i+block_size] for i in ix])
-  y = torch.stack([data[i+1:i+block_size+1] for i in ix])
-  return x, y
-
-xb, yb = get_batch('train')
-print('inputs:')
-print(xb.shape)
-print(xb)
-print('targets:')
-print(yb.shape)
-print(yb)
-
-print('----')
-
-for b in range(batch_size): # batch dimension
-  for t in range(block_size): # time dimension
-    context = xb[b, :t+1]
-    target = yb[b,t]
-    print(f"when input is {context.tolist()} the target: {target}")
-
-print(xb) #input to the transformer
-
-import torch
-import torch.nn as nn
-from torch.nn import functional as F
-torch.manual_seed(1337)
-
-class BigramLanguageModel(nn.Module):
-
-  def __init__(self, vocab_size):
-    super().__init__()
-    # each token reads off the logits for the next token from a lookup table
-    self.token_embedding_table = nn.Embedding(vocab_size,vocab_size)
-
-  def forward(self, idx, targets=None):
-
-      # idx and targets are both (B,T) tensor of integers
-    logits = self.token_embedding_table(idx) # (B,T,C)
-    if targets is None:
-        loss = None
-    else:#Match Cross-Entropy Function
-      B, T, C = logits.shape
-      logits = logits.view(B*T, C)
-      targets = targets.view(B*T)
-      loss = F.cross_entropy(logits, targets)
-
-    return logits, loss
-
-  def generate(self, idx, max_new_tokens):
-    # idx is (B, T) array of indices in the current context
-    for _ in range(max_new_tokens):
-        # get the predictions
-        logits, loss = self(idx)
-        # focus only on the last time step
-        logits = logits[:, -1, :] # becomes (B, C)
-        #apply softmax to get get probabilities
-        probs = F.softmax(logits, dim=-1) # (B, C)
-        # sample from the distribution
-        idx_next = torch.multinomial(probs, num_samples=1) # (B, 1)
-        # append sampled index to the running sequence
-        idx = torch.cat((idx, idx_next), dim=1) # (B, T+1)
-    return idx
-
-m = BigramLanguageModel(vocab_size)
-logits, loss = m(xb, yb)
-print(logits.shape)
-print(loss)
-
-#Randomly trained
-print(decode(m.generate(idx = torch.zeros((1, 1), dtype=torch.long), max_new_tokens=100)[0].tolist()))
-
-#Create a Pytorch optimizer
-optimizer = torch.optim.AdamW(m.parameters(), lr=1e-3)
-
-batch_size = 32
-for steps in range(100):
-
-  # sample a batch of data
-  xb, yb = get_batch('train')
-  
-  # evaluate the loss
-  logits, loss = m(xb, yb)
-  optimizer.zero_grad(set_to_none=True)
-  loss.backward()
-  optimizer.step()
-
-print(loss.item())
-
-"""##The mathematical trick in self-attention"""
-
-# consider the following toy example:
-
-torch.manual_seed(1337)
-B,T,C = 4,8,2 # batch, time, channels
-x = torch.randn(B,T,C)
-x.shape
-
-# We want x[b,t] = mean_{i<=t} x[b,i]
-xbow = torch.zeros((B,T,C))
-for b in range(B):
-    for t in range(T):
-        xprev = x[b,:t+1] # (t,C)
-        xbow[b,t] = torch.mean(xprev, 0)
-
-# version 2
-wei = torch.tril(torch.ones(T, T))
-wei = wei / wei.sum(1, keepdim=True)
-xbow2 = wei @ x # (B, T, T,) @ (B, T, C) ----> (B, T, C)
-torch.allclose(xbow, xbow2)
-
-# version 3
-tril = torch.tril(torch.ones(T, T))
-wei = torch.zeros((T,T))
-wei = wei.masked_fill(tril == 0, float('-inf'))
-wei = F.softmax(wei, dim=-1)
-xbow3 = wei @ x
-torch.allclose(xbow, xbow3)
-
-torch.tril(torch.ones(3, 3))
-
-torch.manual_seed(42)
-a = torch.tril(torch.ones(3, 3))
-a = a / torch.sum(a, 1, keepdim=True)
-b = torch.randint(0,10,(3,2)).float()
-c = a @ b
-print('a=') #Muliply row...
-print(a)
-print('--')
-print('b=') #By column...
-print(b)
-print('--')
-print('c=') #for .product
-print(c)
-
-""""
-class BatchNorm1d:
-  def __init__(self, dim, eps=le-5, momentum=0.1):
-    self.eps = eps
-    self.gamma = torch.ones(dim)
-    self.beta = torch.zeros(dim)
-      
-  def __call__(self, x):
-      # calculate the forward pass
-      xmean = x.mean(1, keepdim = True) # batch mean
-      xvar = x.var(1, keepdim=True) # batch variance
-        
-      xhat = (x - xmean) / torch.sqrt(xvar + self.eps) # normalize to unit variance
-      self.out = self.gamma = xhat + self.beta
-      return self.out
-      
-  def parameters(self):
-    return [self.gamma, self.beta]
-      
-torch.manual_seed(1337)
-module = BatchNorm1d(100)
-x = torch.randn(32, 100) # batch size 32 of 100-dimensional vector
-x = module(x)
-x.shape
-"""
+# load model for inference
+#model = torch.load("podGPT_entire_model.pt")
+#model.to(device)
+#model.eval()
