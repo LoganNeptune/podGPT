@@ -227,6 +227,6 @@ with open("generated_text.txt", "w", encoding="utf-8") as f:
 print("10,000 words written to generated_text.txt")
 
 # load model for inference
-#model = torch.load("podGPT_entire_model.pt")
+#model = torch.load("podGPT_model1.pt")
 #model.to(device)
 #model.eval()
