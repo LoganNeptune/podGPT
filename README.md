@@ -6,13 +6,11 @@ podGPT is an interactive GPT model trained specifically for generating continuou
 git clone https://github.com/LoganNeptune/podGPT.git
 cd podGPT
 
-Step 2: Install Dependencies
-
-Make sure you have Python installed (3.10+ recommended). Then install dependencies:
-
-pip install torch click
-
-
+sudo apt install python3-venv python3-pip -y
+python3 -m venv ~/venv
+source ~/venv/bin/activate
+pip install torch
+pip install click #inference
 
 ⸻
 

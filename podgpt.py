@@ -3,12 +3,15 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 # hyperparameters
+# hyperparameters
 batch_size = 64 # how many indepenent sequences will we process in parellel
 block_size = 256 # what is the maximum context length for predictions?
 max_iters = 5000
 eval_interval = 500
 learning_rate = 3e-4
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+if not torch.cuda.is_available():
+    raise RuntimeError("🚫 CUDA is not available. A GPU is required to run this script.")
+device = 'cuda'
 eval_iters = 200
 n_embd = 384
 n_head = 6
@@ -18,9 +21,11 @@ dropout = 0.2
 
 torch.manual_seed(1337)
 
-!wget https://raw.githubusercontent.com/LoganNeptune/podGPT/main/pod.txt
-with open('pod.txt', 'r', encoding='utf-8') as f:
-    text = f.read()
+# pod_text.py
+def get_pod_text():
+    with open("pod.txt", "r", encoding="utf-8") as f:
+        return f.read()
+text = get_pod_text()
 
 #unique characters that occur in this text
 chars = sorted(list(set(text)))
@@ -209,22 +214,22 @@ for iter in range(max_iters):
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
 print(decode(m.generate(context, max_new_tokens=500)[0].tolist()))
 
-# Generate 10,000 words and save to a file
-# We'll generate enough tokens assuming an average of 5 tokens per word (adjust if necessary)
+# Generate 500 tokens and save to a file
 context = torch.zeros((1, 1), dtype=torch.long, device=device)
-# Generate, e.g., 50,000 tokens
-generated_tokens = m.generate(context, max_new_tokens=50000)[0].tolist()
-generated_text = decode(generated_tokens)
+generated_tokens = m.generate(context, max_new_tokens=500)[0].tolist()
 
-# Split text into words and trim to the first 10,000 words
-words = generated_text.split()
-if len(words) > 10000:
-    generated_text = " ".join(words[:10000])
+with open("genPod.txt", "w", encoding="utf-8") as f:
+    f.write(decode(generated_tokens))
 
-with open("generated_text.txt", "w", encoding="utf-8") as f:
-    f.write(generated_text)
+# # Split text into words and trim to the first 10,000 words
+# words = generated_text.split()
+# if len(words) > 10000:
+#     generated_text = " ".join(words[:10000])
 
-print("10,000 words written to generated_text.txt")
+# with open("generated_text.txt", "w", encoding="utf-8") as f:
+#     f.write(generated_text)
+
+# print("10,000 words written to generated_text.txt")
 
 # load model for inference
 #model = torch.load("podGPT_model1.pt")
