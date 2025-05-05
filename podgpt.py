@@ -1,4 +1,5 @@
 # colab
+#add in cell (cmnd m+b)
 #!pip uninstall -y torch
 #!pip install torch --index-url https://download.pytorch.org/whl/cu121
 
