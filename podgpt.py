@@ -1,3 +1,7 @@
+# colab
+#!pip uninstall -y torch
+#!pip install torch --index-url https://download.pytorch.org/whl/cu121
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
