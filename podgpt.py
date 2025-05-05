@@ -27,7 +27,8 @@ dropout = 0.2
 torch.manual_seed(1337)
 
 # pod_text.py
-!wget https://raw.githubusercontent.com/LoganNeptune/podGPT/main/pod.txt
+#download text independently
+#!wget https://raw.githubusercontent.com/LoganNeptune/podGPT/main/pod.txt
 def get_pod_text():
     with open("pod.txt", "r", encoding="utf-8") as f:
         return f.read()
